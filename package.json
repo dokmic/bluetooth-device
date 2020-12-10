@@ -1,0 +1,19 @@
+{
+  "name": "bluetooth-device",
+  "version": "0.1.0",
+  "description": "Bluetooth Low-Energy Peripheral Device",
+  "keywords": [
+    "bluetooth",
+    "ble",
+    "device"
+  ],
+  "author": "Michael Dokolin <m@dokol.in>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dokmic/bluetooth-device"
+  },
+  "bugs": {
+    "url": "https://github.com/dokmic/bluetooth-device/issues"
+  }
+}
