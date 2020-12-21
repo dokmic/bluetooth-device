@@ -26,7 +26,13 @@
     "build": "rollup -c rollup.config.js",
     "lint": "eslint --ext ts src/"
   },
+  "dependencies": {
+    "@abandonware/noble": "^1.9.2-10",
+    "p-cancelable": "^2.0",
+    "ts-async-decorators": "^0.1"
+  },
   "devDependencies": {
+    "@types/node": "^14.14",
     "@typescript-eslint/eslint-plugin": "^4.12",
     "@typescript-eslint/parser": "^4.12",
     "eslint": "^7.17",
