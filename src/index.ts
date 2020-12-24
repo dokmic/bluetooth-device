@@ -1,9 +1,11 @@
 import PCancelable from 'p-cancelable';
 import noble, { Peripheral } from '@abandonware/noble';
-import { before, semaphore, timeout } from 'ts-async-decorators';
+import { after, before, debounce, retry, semaphore, timeout } from 'ts-async-decorators';
 
+const DEFAULT_TIMEOUT_IDLE = 120000;
 const DEFAULT_TIMEOUT_DISCOVERY = 30000;
 const DEFAULT_TIMEOUT = 10000;
+const DEFAULT_NUMBER_OF_RETRIES = 3;
 
 /**
  * Bluetooth Device Options.
@@ -14,6 +16,18 @@ interface BluetoothDeviceOptions {
    * By default, it equals 30 seconds.
    */
   discoveryTimeout?: number;
+
+  /**
+   * Device idle timeout in milliseconds. After that, the connection will be destroyed.
+   * By default, it equals to 2 minutes.
+   */
+  idleTimeout?: number;
+
+  /**
+   * The number of retries on failed operations.
+   * By default, it is 3.
+   */
+  retries?: number;
 
   /**
    * Device operations timeout, namely, connection, read, and write.
@@ -88,6 +102,7 @@ export class BluetoothDevice {
    * @returns Connection promise.
    */
   @before({ action: (device: BluetoothDevice) => device.discover(), wait: true })
+  @after({ action: (device: BluetoothDevice) => device.disconnect() })
   @timeout({
     timeout(this: BluetoothDevice) {
       return this.options.timeout ?? DEFAULT_TIMEOUT;
@@ -117,6 +132,39 @@ export class BluetoothDevice {
       }
 
       return onDisconnect();
+    });
+  }
+
+  /**
+   * Destroys a connection with the device.
+   * @returns Disconnect promise.
+   */
+  @debounce({
+    timeout(this: BluetoothDevice) {
+      return this.options.idleTimeout ?? DEFAULT_TIMEOUT_IDLE;
+    },
+  })
+  @retry({
+    retries(this: BluetoothDevice) {
+      return this.options.retries ?? DEFAULT_NUMBER_OF_RETRIES;
+    },
+  })
+  @timeout({
+    timeout(this: BluetoothDevice) {
+      return this.options.timeout ?? DEFAULT_TIMEOUT;
+    },
+    reason: 'Disconnect timeout.',
+  })
+  disconnect(): PCancelable<void> {
+    return new PCancelable((resolve, reject, onCancel) => {
+      if (!this.peripheral || this.peripheral.state === 'disconnected') {
+        resolve();
+
+        return;
+      }
+
+      onCancel(() => this.peripheral?.removeListener('disconnect', resolve));
+      this.peripheral?.disconnect(resolve);
     });
   }
 }
