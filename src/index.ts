@@ -167,4 +167,40 @@ export class BluetoothDevice {
       this.peripheral?.disconnect(resolve);
     });
   }
+
+  /**
+   * Waits for the next notification.
+   * If the device was not previously connected, the connection will be established automatically.
+   * @param handle The notification handle.
+   * @returns The notification data buffer.
+   */
+  @retry({
+    retries(this: BluetoothDevice) {
+      return this.options.retries ?? DEFAULT_NUMBER_OF_RETRIES;
+    },
+  })
+  @before({ action: (device: BluetoothDevice) => device.connect(), wait: true })
+  @timeout({
+    timeout(this: BluetoothDevice) {
+      return this.options.timeout ?? DEFAULT_TIMEOUT;
+    },
+    reason: 'Notify timeout.',
+  })
+  notify(handle: number): PCancelable<Buffer> {
+    return new PCancelable((resolve, reject, onCancel) => {
+      // eslint-disable-next-line no-use-before-define
+      const unsubscribe = () => this.peripheral?.removeListener('handleNotify', onNotify);
+      const onNotify = (notificationHandle: number, data: Buffer) => {
+        if (notificationHandle !== handle) {
+          return;
+        }
+
+        unsubscribe();
+        resolve(data);
+      };
+
+      onCancel(unsubscribe);
+      this.peripheral?.on('handleNotify', onNotify);
+    });
+  }
 }
