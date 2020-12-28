@@ -203,4 +203,31 @@ export class BluetoothDevice {
       this.peripheral?.on('handleNotify', onNotify);
     });
   }
+
+  /**
+   * Reads data from the device.
+   * If the device was not previously connected, the connection will be established automatically.
+   * @param handle The handle to read from.
+   * @returns The data buffer.
+   */
+  @retry({
+    retries(this: BluetoothDevice) {
+      return this.options.retries ?? DEFAULT_NUMBER_OF_RETRIES;
+    },
+  })
+  @before({ action: (device: BluetoothDevice) => device.connect(), wait: true })
+  @timeout({
+    timeout(this: BluetoothDevice) {
+      return this.options.timeout ?? DEFAULT_TIMEOUT;
+    },
+    reason: 'Read timeout.',
+  })
+  read(handle: number): PCancelable<Buffer> {
+    return new PCancelable((resolve, reject, onCancel) => {
+      const onRead = (error: string, data: Buffer) => (error ? reject(new Error(error)) : resolve(data));
+
+      onCancel(() => this.peripheral?.removeListener(`handleRead${handle}`, onRead));
+      this.peripheral?.readHandle((handle as unknown) as Buffer, onRead);
+    });
+  }
 }
