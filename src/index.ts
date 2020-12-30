@@ -230,4 +230,32 @@ export class BluetoothDevice {
       this.peripheral?.readHandle((handle as unknown) as Buffer, onRead);
     });
   }
+
+  /**
+   * Writes data to the device.
+   * If the device was not previously connected, the connection will be established automatically.
+   * @param handle The write handle.
+   * @param data The data buffer.
+   * @returns Writing promise.
+   */
+  @retry({
+    retries(this: BluetoothDevice) {
+      return this.options.retries ?? DEFAULT_NUMBER_OF_RETRIES;
+    },
+  })
+  @before({ action: (device: BluetoothDevice) => device.connect(), wait: true })
+  @timeout({
+    timeout(this: BluetoothDevice) {
+      return this.options.timeout ?? DEFAULT_TIMEOUT;
+    },
+    reason: 'Write timeout.',
+  })
+  write(handle: number, data: Buffer): PCancelable<void> {
+    return new PCancelable((resolve, reject, onCancel) => {
+      const onWrite = () => resolve();
+
+      onCancel(() => this.peripheral?.removeListener(`handleWrite${handle}`, onWrite));
+      this.peripheral?.writeHandle((handle as unknown) as Buffer, data, false, onWrite);
+    });
+  }
 }
