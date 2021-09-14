@@ -1,6 +1,7 @@
 # Bluetooth Low-Energy Peripheral Device
 [![NPM](https://img.shields.io/npm/v/bluetooth-device.svg)](https://www.npmjs.com/package/bluetooth-device)
-[![Build Status](https://travis-ci.com/dokmic/bluetooth-device.svg?branch=master)](https://travis-ci.com/dokmic/bluetooth-device)
+[![Tests](https://github.com/dokmic/bluetooth-device/actions/workflows/tests.yaml/badge.svg?branch=master)](https://github.com/dokmic/bluetooth-device/actions/workflows/tests.yaml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This package provides an abstraction layer on top of the Bluetooth Low-Energy (BLE) peripheral device.
 
