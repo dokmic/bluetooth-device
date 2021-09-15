@@ -46,6 +46,7 @@ export class BluetoothDevice {
    * @param address Bluetooth address.
    * @param options Device options.
    */
+  // eslint-disable-next-line no-useless-constructor
   constructor(readonly address: string, private options: BluetoothDeviceOptions = {}) {}
 
   /**
@@ -227,7 +228,7 @@ export class BluetoothDevice {
       const onRead = (error: string, data: Buffer) => (error ? reject(new Error(error)) : resolve(data));
 
       onCancel(() => this.peripheral?.removeListener(`handleRead${handle}`, onRead));
-      this.peripheral?.readHandle((handle as unknown) as Buffer, onRead);
+      this.peripheral?.readHandle(handle as unknown as Buffer, onRead);
     });
   }
 
@@ -255,7 +256,7 @@ export class BluetoothDevice {
       const onWrite = () => resolve();
 
       onCancel(() => this.peripheral?.removeListener(`handleWrite${handle}`, onWrite));
-      this.peripheral?.writeHandle((handle as unknown) as Buffer, data, false, onWrite);
+      this.peripheral?.writeHandle(handle as unknown as Buffer, data, false, onWrite);
     });
   }
 }
