@@ -23,8 +23,9 @@
   "module": "lib/index.mjs",
   "types": "lib/index.d.ts",
   "scripts": {
-    "build": "rollup -c rollup.config.js",
-    "lint": "eslint --ext ts src/"
+    "build": "rollup -c",
+    "lint": "eslint --ext ts src/",
+    "prepare": "$npm_execpath run build"
   },
   "dependencies": {
     "@abandonware/noble": "^1.9.2-10",
@@ -32,9 +33,11 @@
     "ts-async-decorators": "^0.1"
   },
   "devDependencies": {
-    "@types/node": "^14.14",
+    "@rollup/plugin-typescript": "^8.3",
+    "@types/node": "^16.11",
     "@typescript-eslint/eslint-plugin": "^5.3",
     "@typescript-eslint/parser": "^5.3",
+    "builtin-modules": "^3.2",
     "eslint": "^7.32",
     "eslint-config-airbnb": "^18.2",
     "eslint-config-prettier": "^8.3",
@@ -42,10 +45,10 @@
     "eslint-plugin-import": "^2.25",
     "eslint-plugin-prettier": "^4.0",
     "prettier": "^2.4",
-    "rollup": "^2.36",
-    "rollup-plugin-dts": "^2.0",
-    "rollup-plugin-typescript2": "^0.29",
-    "typescript": "^4.1"
+    "rollup": "^2.59",
+    "rollup-plugin-dts": "^4.0",
+    "rollup-plugin-node-externals": "^2.2",
+    "typescript": "^4.4"
   },
   "eslintConfig": {
     "root": true,
