@@ -1,6 +1,5 @@
-import PCancelable from 'p-cancelable';
 import noble, { Peripheral } from '@abandonware/noble';
-import { after, before, debounce, retry, semaphore, timeout } from 'ts-async-decorators';
+import { after, before, cancelable, debounce, onCancel, retry, semaphore, timeout } from 'ts-async-decorators';
 
 const DEFAULT_TIMEOUT_IDLE = 120000;
 const DEFAULT_TIMEOUT_DISCOVERY = 30000;
@@ -60,12 +59,13 @@ export class BluetoothDevice {
     },
     reason: 'Discovery timeout.',
   })
-  discover(): PCancelable<void> {
-    return new PCancelable(async (resolve, reject, onCancel) => {
-      if (this.peripheral) {
-        resolve();
-      }
+  @cancelable()
+  async discover(): Promise<void> {
+    if (this.peripheral) {
+      return;
+    }
 
+    await new Promise<void>((resolve, reject) => {
       const stop = () => {
         noble.stopScanning();
         /* eslint-disable no-use-before-define */
@@ -87,12 +87,15 @@ export class BluetoothDevice {
       const onStateChange = (state: string) =>
         state === 'poweredOn' ? noble.startScanningAsync() : noble.stopScanning();
 
-      onCancel(stop);
+      onCancel(() => {
+        stop();
+        reject();
+      });
       noble.on('discover', onDiscover);
       noble.on('stateChange', onStateChange);
 
       if (noble.state === 'poweredOn') {
-        await noble.startScanningAsync();
+        noble.startScanningAsync();
       }
     });
   }
@@ -110,29 +113,35 @@ export class BluetoothDevice {
     },
     reason: 'Connection timeout.',
   })
-  connect(): PCancelable<void> {
-    return new PCancelable((resolve, reject, onCancel) => {
-      if (this.peripheral?.state === 'connected') {
-        return resolve();
-      }
+  @cancelable()
+  async connect(): Promise<void> {
+    if (this.peripheral?.state === 'connected') {
+      return;
+    }
 
+    await new Promise<void>((resolve, reject) => {
       const onConnect = (error?: string) => (error ? reject(new Error(error)) : resolve());
       const onDisconnect = () => this.peripheral?.connect(onConnect);
 
       onCancel(() => {
         this.peripheral?.removeListener('connect', onConnect);
         this.peripheral?.removeListener('disconnect', onDisconnect);
+        reject();
       });
 
       if (this.peripheral?.state === 'connecting') {
-        return this.peripheral?.once('connect', onConnect);
+        this.peripheral?.once('connect', onConnect);
+
+        return;
       }
 
       if (this.peripheral?.state === 'disconnecting') {
-        return this.peripheral?.once('disconnect', onDisconnect);
+        this.peripheral?.once('disconnect', onDisconnect);
+
+        return;
       }
 
-      return onDisconnect();
+      onDisconnect();
     });
   }
 
@@ -156,15 +165,17 @@ export class BluetoothDevice {
     },
     reason: 'Disconnect timeout.',
   })
-  disconnect(): PCancelable<void> {
-    return new PCancelable((resolve, reject, onCancel) => {
-      if (!this.peripheral || this.peripheral.state === 'disconnected') {
-        resolve();
+  @cancelable()
+  async disconnect(): Promise<void> {
+    if (!this.peripheral || this.peripheral.state === 'disconnected') {
+      return;
+    }
 
-        return;
-      }
-
-      onCancel(() => this.peripheral?.removeListener('disconnect', resolve));
+    await new Promise<void>((resolve, reject) => {
+      onCancel(() => {
+        this.peripheral?.removeListener('disconnect', resolve);
+        reject();
+      });
       this.peripheral?.disconnect(resolve);
     });
   }
@@ -187,8 +198,9 @@ export class BluetoothDevice {
     },
     reason: 'Notify timeout.',
   })
-  notify(handle: number): PCancelable<Buffer> {
-    return new PCancelable((resolve, reject, onCancel) => {
+  @cancelable()
+  notify(handle: number): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
       // eslint-disable-next-line no-use-before-define
       const unsubscribe = () => this.peripheral?.removeListener('handleNotify', onNotify);
       const onNotify = (notificationHandle: number, data: Buffer) => {
@@ -200,7 +212,10 @@ export class BluetoothDevice {
         resolve(data);
       };
 
-      onCancel(unsubscribe);
+      onCancel(() => {
+        unsubscribe();
+        reject();
+      });
       this.peripheral?.on('handleNotify', onNotify);
     });
   }
@@ -223,11 +238,15 @@ export class BluetoothDevice {
     },
     reason: 'Read timeout.',
   })
-  read(handle: number): PCancelable<Buffer> {
-    return new PCancelable((resolve, reject, onCancel) => {
+  @cancelable()
+  read(handle: number): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
       const onRead = (error: string, data: Buffer) => (error ? reject(new Error(error)) : resolve(data));
 
-      onCancel(() => this.peripheral?.removeListener(`handleRead${handle}`, onRead));
+      onCancel(() => {
+        this.peripheral?.removeListener(`handleRead${handle}`, onRead);
+        reject();
+      });
       this.peripheral?.readHandle(handle as unknown as Buffer, onRead);
     });
   }
@@ -251,11 +270,15 @@ export class BluetoothDevice {
     },
     reason: 'Write timeout.',
   })
-  write(handle: number, data: Buffer): PCancelable<void> {
-    return new PCancelable((resolve, reject, onCancel) => {
+  @cancelable()
+  write(handle: number, data: Buffer): Promise<void> {
+    return new Promise((resolve, reject) => {
       const onWrite = () => resolve();
 
-      onCancel(() => this.peripheral?.removeListener(`handleWrite${handle}`, onWrite));
+      onCancel(() => {
+        this.peripheral?.removeListener(`handleWrite${handle}`, onWrite);
+        reject();
+      });
       this.peripheral?.writeHandle(handle as unknown as Buffer, data, false, onWrite);
     });
   }
